@@ -1,14 +1,13 @@
 import os
 from flask import Flask, render_template, request, jsonify
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from PIL import Image
-import io
 import json
  
 app = Flask(__name__)
  
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-2.0-flash-exp")
  
 @app.route('/')
 def index():
@@ -21,7 +20,7 @@ def upload():
  
     try:
         file = request.files['file']
-        image_bytes = file.read()
+        img = Image.open(file)
  
         prompt = """
         Look at this handwritten shopping list. 
@@ -31,14 +30,7 @@ def upload():
         {"Categories": [{"name": "Produce", "items": ["Apples", "Bananas"]}, {"name": "Dairy", "items": ["Milk"]}]}
         """
  
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type=file.mimetype),
-                prompt
-            ]
-        )
- 
+        response = model.generate_content([prompt, img])
         json_text = response.text.replace('```json', '').replace('```', '').strip()
         data = json.loads(json_text)
         return jsonify(data)
